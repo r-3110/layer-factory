@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  lambda-layer
+
+  Sample SAM Template for lambda-layer
+  
+Parameters:
+  SystemName:
+    Type: String
+  #arch:
+    #Type: String
+    #AllowedValues:
+      #- arm64
+      #- x86_64
+  #runtime:
+    #Type: String
+    #AllowedValues:
+      #- nodejs16.x
+      #- nodejs18.x 
+  #image:
+    #Type: String
+    #AllowedValues:
+      #- aws/codebuild/amazonlinux2-x86_64-standard:4.0
+      #- aws/codebuild/amazonlinux2-aarch64-standard:2.0
+
+Resources:
+  LayerBuilder:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Artifacts: 
+        Location: saito-bucket-test0816
+        Name: build.zip
+        NamespaceType: BUILD_ID
+        OverrideArtifactName: false
+        Packaging: ZIP
+        Path: result/
+        Type: S3
+      ConcurrentBuildLimit: 1
+      Description: create-lambda-layer-artifact
+      Environment: 
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
+        Type: LINUX_CONTAINER
+      Name: String
+      ResourceAccessRole: !GetAtt CodeBuildServiceRole.Arn
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Source: 
+        BuildSpec: buildspec.yml
+        #BuildStatusConfig: 
+          #Context: String
+          #TargetUrl: String
+        Location: https://github.com/r-3110/layer-factory.git
+        ReportBuildStatus: true
+        Type: GITHUB
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: SystemName
+          Value: !Ref SystemName
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: BatchExecuteRole
+      Description: CodeBuildServiceRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Tags:
+        - Key: SystemName
+          Value: !Ref SystemName
+
+  #FrontendBucket:
+    #Type: AWS::S3::Bucket
+    #DeletionPolicy: Retain
+    #Properties:
+      #BucketName: !Sub ${SystemName}-${Env}-staticcontentsfrontend
+      #AccessControl: Private
+      #Tags: 
+        #- Key: SystemName
+          #Value: !Ref SystemName
+
+  #FrontendBucketPolicy:
+    #Type: AWS::S3::BucketPolicy
+    #Properties:
+      #Bucket: !Ref FrontendBucket
+      #PolicyDocument:
+        #Version: 2012-10-17
+        #Statement:
+          #- Action: s3:GetObject
+            #Effect: Allow
+            #Resource: !Sub arn:aws:s3:::${FrontendBucket}/*
+            #Principal:
+              #AWS: !Sub arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}
+
+  #Sharp:
+    #Type: AWS::Serverless::LayerVersion
+    #Properties: 
+      #CompatibleArchitectures: 
+        #- !Ref arch
+      #CompatibleRuntimes: 
+        #- nodejs16.x
+        #- nodejs18.x 
+      #ContentUri: s3url
+      #Description: String
+      #LayerName: String
+      #RetentionPolicy: Retain
+
+
+#Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
